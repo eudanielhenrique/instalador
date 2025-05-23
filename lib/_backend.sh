@@ -84,6 +84,7 @@ MAIL_USER="contato@seusite.com"
 MAIL_PASS="senha"
 MAIL_FROM="Recuperar Senha <contato@seusite.com>"
 MAIL_PORT="465"
+MAIL_SECURE=false
 
 [-]EOF
 EOF
