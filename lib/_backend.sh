@@ -79,6 +79,9 @@ USER_LIMIT=${max_user}
 CONNECTIONS_LIMIT=${max_whats}
 CLOSED_SEND_BY_ME=true
 
+#RECAPTCHA_SECRET_KEY=
+#APP_HOSTNAME=
+
 MAIL_HOST="smtp.hostinger.com"
 MAIL_USER="contato@seusite.com"
 MAIL_PASS="senha"
@@ -219,7 +222,8 @@ backend_start_pm2() {
 
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/backend
-  pm2 start dist/server.js --name ${instancia_add}-backend
+  pm2 start dist/server.js --node-args="--max-old-space-size=8192" --name ${instancia_add}-backend
+  sudo pm2 save
 EOF
 
   sleep 2
