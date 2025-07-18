@@ -308,20 +308,21 @@ system_docker_install() {
   printf "\n\n"
 
   sleep 2
-
-  sudo su - root <<EOF
+}
+sudo su - root <<EOF
   apt install -y apt-transport-https \
                  ca-certificates curl \
                  software-properties-common
 
-  sleep 2
-  curl -sSL https://get.docker.com/ | sh
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+  
+  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
 
+  apt install -y docker-ce
 EOF
 
   sleep 2
 }
-
 #######################################
 # Ask for file location containing
 # multiple URL for streaming.
