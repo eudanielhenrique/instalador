@@ -507,6 +507,11 @@ sudo su - root << EOF
 
 cat > /etc/nginx/conf.d/deploy.conf << 'END'
 client_max_body_size 100M;
+large_client_header_buffers 4 16k;
+client_body_buffer_size 16k;
+proxy_buffer_size 32k;
+proxy_buffers 8 32k;
+END
 END
 
 EOF
