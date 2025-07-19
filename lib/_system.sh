@@ -286,9 +286,8 @@ system_node_install() {
   sleep 2
   npm install -g npm@latest
   sleep 2
-  curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
-  echo "deb [arch=amd64 signed-by=/usr/share/keyrings/pgdg.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-  sudo apt-get update -y
+  sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
   sudo apt-get update -y && sudo apt-get -y install postgresql
   sleep 2
   sudo timedatectl set-timezone America/Sao_Paulo
@@ -308,8 +307,8 @@ system_docker_install() {
   printf "\n\n"
 
   sleep 2
-}
-sudo su - root <<EOF
+
+  sudo su - root <<EOF
   apt install -y apt-transport-https \
                  ca-certificates curl \
                  software-properties-common
@@ -323,6 +322,7 @@ EOF
 
   sleep 2
 }
+
 #######################################
 # Ask for file location containing
 # multiple URL for streaming.
@@ -507,10 +507,6 @@ sudo su - root << EOF
 
 cat > /etc/nginx/conf.d/deploy.conf << 'END'
 client_max_body_size 100M;
-large_client_header_buffers 4 16k;
-client_body_buffer_size 16k;
-proxy_buffer_size 32k;
-proxy_buffers 8 32k;
 END
 
 EOF
