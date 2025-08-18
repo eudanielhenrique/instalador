@@ -1,10 +1,5 @@
 # Instalador Whaticket SaaS
 
-Substituimos a instalação do docker por um comando único para maior compatibilidade com as diferentes arquiteturas de servidores. 
-i386, arm64, x86_64 / 64 Bits.
-
-Modificamos para que o PostgreSQL seja instalado sem problemas em diferentes arquiteturas.
-
 ```bash
 sudo apt -y update && apt -y upgrade
 ```
@@ -26,5 +21,7 @@ cd instalador  && sudo ./install_instancia
 | --- | Mínimo | Recomendado |
 | --- | --- | --- |
 | Node JS | 20.x | 20.x |
-| Ubuntu | 20.x | 20.x |
+| Ubuntu | 20.x | 22.x |
 | Memória RAM | 4Gb | 8Gb |  
+
+O instalador no Ubuntu 22 não é compativel com repositórios privados.
