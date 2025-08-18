@@ -315,26 +315,41 @@ EOF
 #######################################
 system_docker_install() {
   print_banner
-  printf "${WHITE} 💻 Instalando docker...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Verificando e instalando Docker...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
-  sudo su - root <<EOF
-  apt install -y apt-transport-https \
-                 ca-certificates curl \
-                 software-properties-common
+  # Verifica se o Docker já está instalado
+  if command -v docker &>/dev/null; then
+    echo -e "${GREEN} Docker já está instalado.${NC}"
+  else
+    echo -e "${WHITE} Instalando pré-requisitos e adicionando repositório Docker (método moderno)...${NC}"
+    # O 'sudo' aqui é usado fora do heredoc, mas cada comando dentro é 'sudo'ificado
+    sudo apt update
+    sudo apt install -y ca-certificates curl gnupg lsb-release
 
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-  
-  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+    # Adiciona a chave GPG oficial do Docker de forma segura
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-  apt install -y docker-ce
-EOF
+    # Adiciona o repositório Docker para a versão correta do Ubuntu (dinâmico)
+    echo -e \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-  sleep 2
+    echo -e "${WHITE} Atualizando índices de pacotes e instalando Docker CE e componentes...${NC}"
+    sudo apt update
+    sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    # Adiciona o usuário atual ao grupo 'docker' para rodar comandos sem sudo
+    sudo usermod -aG docker "$USER"
+    echo -e "${GREEN} Docker instalado com sucesso! Por favor, faça logout e login novamente para que as alterações do grupo 'docker' tenham efeito, ou execute 'newgrp docker'.${NC}"
+  fi
+  sleep 2 # Pequeno atraso após a instalação do Docker
 }
-
 #######################################
 # Ask for file location containing
 # multiple URL for streaming.
