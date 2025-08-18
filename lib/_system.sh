@@ -23,10 +23,6 @@ system_create_user() {
   useradd -m -p "${hashed_password}" -s /bin/bash -G sudo deploy
   usermod -aG sudo deploy
 EOF
-  ##sudo su - root <<EOF
-  ###useradd -m -p $(openssl passwd -crypt ${mysql_root_password}) -s /bin/bash -G sudo deploy
-  ###usermod -aG sudo deploy
-##EOF
 
   sleep 2
 }
