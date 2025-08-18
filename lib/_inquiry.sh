@@ -6,6 +6,7 @@ get_mysql_root_password() {
   printf "${WHITE} 💻 Insira senha para o usuario Deploy e Banco de Dados (Não utilizar caracteres especiais):${GRAY_LIGHT}"
   printf "\n\n"
   read -p "> " mysql_root_password
+  export mysql_root_password # Torna a variável disponível para sub-shells
 }
 
 get_link_git() {
