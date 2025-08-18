@@ -23,5 +23,3 @@ cd instalador  && sudo ./install_instancia
 | Node JS | 20.x | 20.x |
 | Ubuntu | 20.x | 22.x |
 | Memória RAM | 4Gb | 8Gb |  
-
-O instalador no Ubuntu 22 não é compativel com repositórios privados.
