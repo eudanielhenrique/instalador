@@ -13,11 +13,20 @@ system_create_user() {
   printf "\n\n"
 
   sleep 2
+  sudo apt update
+  sudo apt install whois
+
+  sleep 2
 
   sudo su - root <<EOF
-  useradd -m -p $(openssl passwd -crypt ${mysql_root_password}) -s /bin/bash -G sudo deploy
+  hashed_password=$(mkpasswd -m sha-512 "${mysql_root_password}")
+  useradd -m -p "${hashed_password}" -s /bin/bash -G sudo deploy
   usermod -aG sudo deploy
 EOF
+  ##sudo su - root <<EOF
+  ###useradd -m -p $(openssl passwd -crypt ${mysql_root_password}) -s /bin/bash -G sudo deploy
+  ###usermod -aG sudo deploy
+##EOF
 
   sleep 2
 }
