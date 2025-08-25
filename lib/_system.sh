@@ -13,20 +13,22 @@ system_create_user() {
   printf "\n\n"
 
   sleep 2
+  
   sudo apt update
-  sudo apt install whois
 
   sleep 2
 
   sudo su - root <<EOF
-  hashed_password=$(mkpasswd -m sha-512 "${mysql_root_password}")
-  useradd -m -p "${hashed_password}" -s /bin/bash -G sudo deploy
-  usermod -aG sudo deploy
+# Cria o usuário 'deploy' com sua pasta home, shell padrão e o adiciona ao grupo 'sudo'.
+useradd -m -s /bin/bash -G sudo deploy
+
+# Define a senha para o usuário 'deploy' usando o valor da variável 'mysql_root_password'.
+# Este método é mais confiável para scripts.
+echo "deploy:${mysql_root_password}" | chpasswd
 EOF
 
   sleep 2
 }
-
 #######################################
 # clones repostories using git
 # Arguments:
