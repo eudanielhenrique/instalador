@@ -79,10 +79,13 @@ USER_LIMIT=${max_user}
 CONNECTIONS_LIMIT=${max_whats}
 CLOSED_SEND_BY_ME=true
 
-#RECAPTCHA_SECRET_KEY=
-#APP_HOSTNAME=
+#GERENCIANET_SANDBOX=false
+#GERENCIANET_CLIENT_ID=Client_Id_Gerencianet
+#GERENCIANET_CLIENT_SECRET=Client_Secret_Gerencianet
+#GERENCIANET_PIX_CERT=certificado-Gerencianet
+#GERENCIANET_PIX_KEY=chave_pix_Gerencianet
 
-MAIL_HOST="smtp.hostinger.com"
+MAIL_HOST="smtp.seusite.com"
 MAIL_USER="contato@seusite.com"
 MAIL_PASS="senha"
 MAIL_FROM="Recuperar Senha <contato@seusite.com>"
