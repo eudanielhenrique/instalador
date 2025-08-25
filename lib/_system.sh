@@ -29,58 +29,24 @@ EOF
 
   sleep 2
 }
-
-system_mv_folder() {
-  print_banner
-  printf "${WHITE} 💻 Preparando o código do Whaticket...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-  cp "${PROJECT_ROOT}"/Whaticket.zip /home/deploy/${instancia_add}/
-EOF
-
-  sleep 2
-}
-
 #######################################
-# creates folder
+# clones repostories using git
 # Arguments:
 #   None
 #######################################
-system_create_folder() {
+system_git_clone() {
   print_banner
-  printf "${WHITE} 💻 Agora, vamos criar a nova pasta da Instância...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Fazendo download do código Whaticket...${GRAY_LIGHT}"
   printf "\n\n"
 
-  sleep 2
-
-  sudo su - deploy <<EOF 
-  mkdir ${instancia_add}
-EOF
-
-  sleep 2
-}
-
-#######################################
-# unzip whaticket
-# Arguments:
-#   None
-#######################################
-system_unzip_Whaticketsaas() {
-  print_banner
-  printf "${WHITE} 💻 Extraindo o Whaticket...${GRAY_LIGHT}"
-  printf "\n\n"
 
   sleep 2
 
   sudo su - deploy <<EOF
-  unzip /home/deploy/${instancia_add}/Whaticket.zip -d /home/deploy/${instancia_add}
+  git clone ${link_git} /home/deploy/${instancia_add}/
 EOF
 
-  sudo chmod -R 777 /home/deploy/${instancia_add}/backend/public/
-  sleep
+  sleep 2
 }
 
 #######################################
@@ -112,7 +78,7 @@ EOF
 #######################################
 deletar_tudo() {
   print_banner
-  printf "${WHITE} 💻 Vamos deletar uma Instância do Whaticket...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Vamos deletar o Whaticket...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -143,7 +109,7 @@ EOF
   sleep 2
 
   print_banner
-  printf "${WHITE} 💻 Remoção da Instância/Empresa ${empresa_delete} realizado com sucesso ...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Remoção da Instancia/Empresa ${empresa_delete} realizado com sucesso ...${GRAY_LIGHT}"
   printf "\n\n"
 
 
@@ -158,7 +124,7 @@ EOF
 #######################################
 configurar_bloqueio() {
   print_banner
-  printf "${WHITE} 💻 Vamos Bloquear o Whaticket...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Vamos bloquear o Whaticket...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -171,7 +137,7 @@ EOF
   sleep 2
 
   print_banner
-  printf "${WHITE} 💻 Bloqueio da Instância/Empresa ${empresa_bloquear} realizado com sucesso ...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Bloqueio da Instancia/Empresa ${empresa_bloquear} realizado com sucesso ...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -185,7 +151,7 @@ EOF
 #######################################
 configurar_desbloqueio() {
   print_banner
-  printf "${WHITE} 💻 Vamos Desbloquear o Whaticket de uma Instância...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Vamos Desbloquear o Whaticket...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -198,7 +164,7 @@ EOF
   sleep 2
 
   print_banner
-  printf "${WHITE} 💻 Desbloqueio da Instância/Empresa ${empresa_desbloquear} realizado com sucesso ...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Desbloqueio da Instancia/Empresa ${empresa_desbloquear} realizado com sucesso ...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -211,7 +177,7 @@ EOF
 #######################################
 configurar_dominio() {
   print_banner
-  printf "${WHITE} 💻 Vamos alterar os domínios do Whaticket de uma Instância...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Vamos Alterar os Dominios do Whaticket...${GRAY_LIGHT}"
   printf "\n\n"
 
 sleep 2
@@ -303,7 +269,7 @@ EOF
   sleep 2
 
   print_banner
-  printf "${WHITE} 💻 Alteração de dominio da Instância/Empresa ${empresa_dominio} realizado com sucesso ...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Alteração de dominio da Instancia/Empresa ${empresa_dominio} realizado com sucesso ...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -322,14 +288,17 @@ system_node_install() {
   sleep 2
 
   sudo su - root <<EOF
-  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
   apt-get install -y nodejs
   sleep 2
   npm install -g npm@latest
   sleep 2
-  sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-  sudo apt-get update -y && sudo apt-get -y install postgresql
+  sudo install -d /usr/share/postgresql-common/pgdg
+  sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+  . /etc/os-release
+  sudo sh -c "echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $VERSION_CODENAME-pgdg main' > /etc/apt/sources.list.d/pgdg.list"
+  sudo apt update
+  sudo apt -y install postgresql
   sleep 2
   sudo timedatectl set-timezone America/Sao_Paulo
   
@@ -344,26 +313,41 @@ EOF
 #######################################
 system_docker_install() {
   print_banner
-  printf "${WHITE} 💻 Instalando docker...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Verificando e instalando Docker...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
-  sudo su - root <<EOF
-  apt install -y apt-transport-https \
-                 ca-certificates curl \
-                 software-properties-common
+  # Verifica se o Docker já está instalado
+  if command -v docker &>/dev/null; then
+    echo -e "${GREEN} Docker já está instalado.${NC}"
+  else
+    echo -e "${WHITE} Instalando pré-requisitos e adicionando repositório Docker (método moderno)...${NC}"
+    # O 'sudo' aqui é usado fora do heredoc, mas cada comando dentro é 'sudo'ificado
+    sudo apt update
+    sudo apt install -y ca-certificates curl gnupg lsb-release
 
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-  
-  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+    # Adiciona a chave GPG oficial do Docker de forma segura
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-  apt install -y docker-ce
-EOF
+    # Adiciona o repositório Docker para a versão correta do Ubuntu (dinâmico)
+    echo -e \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-  sleep 2
+    echo -e "${WHITE} Atualizando índices de pacotes e instalando Docker CE e componentes...${NC}"
+    sudo apt update
+    sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    # Adiciona o usuário atual ao grupo 'docker' para rodar comandos sem sudo
+    sudo usermod -aG docker "$USER"
+    echo -e "${GREEN} Docker instalado com sucesso! Por favor, faça logout e login novamente para que as alterações do grupo 'docker' tenham efeito, ou execute 'newgrp docker'.${NC}"
+  fi
+  sleep 2 # Pequeno atraso após a instalação do Docker
 }
-
 #######################################
 # Ask for file location containing
 # multiple URL for streaming.
@@ -377,7 +361,7 @@ EOF
 #######################################
 system_puppeteer_dependencies() {
   print_banner
-  printf "${WHITE} 💻 Instalando dependências do puppeteer...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Instalando puppeteer dependencies...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -520,7 +504,7 @@ EOF
 #######################################
 system_nginx_restart() {
   print_banner
-  printf "${WHITE} 💻 Reiniciando nginx...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 reiniciando nginx...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -539,7 +523,7 @@ EOF
 #######################################
 system_nginx_conf() {
   print_banner
-  printf "${WHITE} 💻 Configurando nginx...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 configurando nginx...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -548,6 +532,11 @@ sudo su - root << EOF
 
 cat > /etc/nginx/conf.d/deploy.conf << 'END'
 client_max_body_size 100M;
+large_client_header_buffers 4 16k;
+client_body_buffer_size 16k;
+proxy_buffer_size 32k;
+proxy_buffers 8 32k;
+END
 END
 
 EOF
