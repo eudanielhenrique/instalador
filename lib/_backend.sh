@@ -79,6 +79,8 @@ USER_LIMIT=${max_user}
 CONNECTIONS_LIMIT=${max_whats}
 CLOSED_SEND_BY_ME=true
 
+COMPANY_NAME=Whaticket
+
 #GERENCIANET_SANDBOX=false
 #GERENCIANET_CLIENT_ID=Client_Id_Gerencianet
 #GERENCIANET_CLIENT_SECRET=Client_Secret_Gerencianet
