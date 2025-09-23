@@ -91,6 +91,7 @@ sudo su - deploy << EOF
   cat <<[-]EOF > /home/deploy/${instancia_add}/frontend/.env
 REACT_APP_BACKEND_URL=${backend_url}
 REACT_APP_HOURS_CLOSE_TICKETS_AUTO = 24
+REACT_APP_COPYRIGHT=Whaticket
 [-]EOF
 EOF
 
