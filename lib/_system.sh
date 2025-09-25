@@ -85,10 +85,9 @@ deletar_tudo() {
 
   sudo su - root <<EOF
   docker container rm redis-${empresa_delete} --force
-  cd && rm -rf /etc/nginx/sites-enabled/${empresa_delete}-frontend
-  cd && rm -rf /etc/nginx/sites-enabled/${empresa_delete}-backend  
-  cd && rm -rf /etc/nginx/sites-available/${empresa_delete}-frontend
-  cd && rm -rf /etc/nginx/sites-available/${empresa_delete}-backend
+  # Remove Traefik labels and configurations for the deleted instance
+  docker network rm ${empresa_delete}-network 2>/dev/null || true
+  rm -rf /opt/coolify/traefik/dynamic/${empresa_delete}-*.yml 2>/dev/null || true
   
   sleep 2
 
@@ -183,10 +182,8 @@ configurar_dominio() {
 sleep 2
 
   sudo su - root <<EOF
-  cd && rm -rf /etc/nginx/sites-enabled/${empresa_dominio}-frontend
-  cd && rm -rf /etc/nginx/sites-enabled/${empresa_dominio}-backend  
-  cd && rm -rf /etc/nginx/sites-available/${empresa_dominio}-frontend
-  cd && rm -rf /etc/nginx/sites-available/${empresa_dominio}-backend
+  # Remove old Traefik configurations for domain change
+  rm -rf /opt/coolify/traefik/dynamic/${empresa_dominio}-*.yml 2>/dev/null || true
 EOF
 
 sleep 2
@@ -202,68 +199,44 @@ EOF
 sleep 2
    
    backend_hostname=$(echo "${alter_backend_url/https:\/\/}")
+   frontend_hostname=$(echo "${alter_frontend_url/https:\/\/}")
 
  sudo su - root <<EOF
-  cat > /etc/nginx/sites-available/${empresa_dominio}-backend << 'END'
-server {
-  server_name $backend_hostname;
-  location / {
-    proxy_pass http://127.0.0.1:${alter_backend_port};
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host \$host;
-    proxy_set_header X-Real-IP \$remote_addr;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_cache_bypass \$http_upgrade;
-  }
-}
+  # Create Traefik dynamic configuration for backend
+  mkdir -p /opt/coolify/traefik/dynamic
+  cat > /opt/coolify/traefik/dynamic/${empresa_dominio}-backend.yml << 'END'
+http:
+  routers:
+    ${empresa_dominio}-backend:
+      rule: "Host(\`$backend_hostname\`)"
+      service: "${empresa_dominio}-backend"
+      tls:
+        certResolver: "letsencrypt"
+  services:
+    ${empresa_dominio}-backend:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:${alter_backend_port}"
 END
-ln -s /etc/nginx/sites-available/${empresa_dominio}-backend /etc/nginx/sites-enabled
-EOF
 
-sleep 2
-
-frontend_hostname=$(echo "${alter_frontend_url/https:\/\/}")
-
-sudo su - root << EOF
-cat > /etc/nginx/sites-available/${empresa_dominio}-frontend << 'END'
-server {
-  server_name $frontend_hostname;
-  location / {
-    proxy_pass http://127.0.0.1:${alter_frontend_port};
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host \$host;
-    proxy_set_header X-Real-IP \$remote_addr;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_cache_bypass \$http_upgrade;
-  }
-}
+  # Create Traefik dynamic configuration for frontend
+  cat > /opt/coolify/traefik/dynamic/${empresa_dominio}-frontend.yml << 'END'
+http:
+  routers:
+    ${empresa_dominio}-frontend:
+      rule: "Host(\`$frontend_hostname\`)"
+      service: "${empresa_dominio}-frontend"
+      tls:
+        certResolver: "letsencrypt"
+  services:
+    ${empresa_dominio}-frontend:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:${alter_frontend_port}"
 END
-ln -s /etc/nginx/sites-available/${empresa_dominio}-frontend /etc/nginx/sites-enabled
-EOF
 
- sleep 2
-
- sudo su - root <<EOF
-  service nginx restart
-EOF
-
-  sleep 2
-
-  backend_domain=$(echo "${backend_url/https:\/\/}")
-  frontend_domain=$(echo "${frontend_url/https:\/\/}")
-
-  sudo su - root <<EOF
-  certbot -m $deploy_email \
-          --nginx \
-          --agree-tos \
-          --non-interactive \
-          --domains $backend_domain,$frontend_domain
+  # Restart Traefik to apply new configurations
+  docker restart traefik 2>/dev/null || echo "Traefik container not found, configurations will be applied when Traefik starts"
 EOF
 
   sleep 2
@@ -457,86 +430,159 @@ EOF
 }
 
 #######################################
-# installs certbot
+# installs traefik (Coolify)
 # Arguments:
 #   None
 #######################################
-system_certbot_install() {
+system_traefik_install() {
   print_banner
-  printf "${WHITE} 💻 Instalando certbot...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Instalando Traefik (Coolify)...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
   sudo su - root <<EOF
-  apt-get remove certbot
-  snap install --classic certbot
-  ln -s /snap/bin/certbot /usr/bin/certbot
+  # Create Traefik directories
+  mkdir -p /opt/coolify/traefik/dynamic
+  mkdir -p /opt/coolify/traefik/data
+  
+  # Create Traefik network
+  docker network create traefik-network 2>/dev/null || true
+  
+  # Create Traefik configuration
+  cat > /opt/coolify/traefik/traefik.yml << 'END'
+api:
+  dashboard: true
+  insecure: false
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entrypoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: ${deploy_email}
+      storage: /data/acme.json
+      httpChallenge:
+        entryPoint: web
+END
+
+  # Set proper permissions
+  chmod 600 /opt/coolify/traefik/data/acme.json 2>/dev/null || touch /opt/coolify/traefik/data/acme.json && chmod 600 /opt/coolify/traefik/data/acme.json
 EOF
 
   sleep 2
 }
 
 #######################################
-# installs nginx
+# starts traefik container
 # Arguments:
 #   None
 #######################################
-system_nginx_install() {
+system_traefik_start() {
   print_banner
-  printf "${WHITE} 💻 Instalando nginx...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Iniciando container Traefik...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
   sudo su - root <<EOF
-  apt install -y nginx
-  rm /etc/nginx/sites-enabled/default
+  # Start Traefik container
+  docker run -d \
+    --name traefik \
+    --restart unless-stopped \
+    --network traefik-network \
+    -p 80:80 \
+    -p 443:443 \
+    -p 8080:8080 \
+    -v /opt/coolify/traefik/traefik.yml:/etc/traefik/traefik.yml:ro \
+    -v /opt/coolify/traefik/dynamic:/etc/traefik/dynamic:ro \
+    -v /opt/coolify/traefik/data:/data \
+    -v /var/run/docker.sock:/var/run/docker.sock:ro \
+    traefik:v3.0
 EOF
 
   sleep 2
 }
 
 #######################################
-# restarts nginx
+# restarts traefik
 # Arguments:
 #   None
 #######################################
-system_nginx_restart() {
+system_traefik_restart() {
   print_banner
-  printf "${WHITE} 💻 reiniciando nginx...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Reiniciando Traefik...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
   sudo su - root <<EOF
-  service nginx restart
+  docker restart traefik 2>/dev/null || echo "Traefik container not found"
 EOF
 
   sleep 2
 }
 
 #######################################
-# setup for nginx.conf
+# setup for traefik middleware
 # Arguments:
 #   None
 #######################################
-system_nginx_conf() {
+system_traefik_conf() {
   print_banner
-  printf "${WHITE} 💻 configurando nginx...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Configurando middlewares do Traefik...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
 sudo su - root << EOF
 
-cat > /etc/nginx/conf.d/deploy.conf << 'END'
-client_max_body_size 100M;
-large_client_header_buffers 4 16k;
-client_body_buffer_size 16k;
-proxy_buffer_size 32k;
-proxy_buffers 8 32k;
-END
+cat > /opt/coolify/traefik/dynamic/middlewares.yml << 'END'
+http:
+  middlewares:
+    default-headers:
+      headers:
+        frameDeny: true
+        sslRedirect: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 31536000
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+    
+    secure-headers:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - OPTIONS
+          - PUT
+          - POST
+          - DELETE
+        accessControlMaxAge: 100
+        hostsProxyHeaders:
+          - "X-Forwarded-Host"
+        referrerPolicy: "same-origin"
+    
+    body-limit:
+      buffering:
+        maxRequestBodyBytes: 104857600  # 100MB
 END
 
 EOF
@@ -545,13 +591,13 @@ EOF
 }
 
 #######################################
-# installs nginx
+# setup traefik and verify configuration
 # Arguments:
 #   None
 #######################################
-system_certbot_setup() {
+system_traefik_setup() {
   print_banner
-  printf "${WHITE} 💻 Configurando certbot...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Verificando configuração do Traefik...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -560,12 +606,18 @@ system_certbot_setup() {
   frontend_domain=$(echo "${frontend_url/https:\/\/}")
 
   sudo su - root <<EOF
-  certbot -m $deploy_email \
-          --nginx \
-          --agree-tos \
-          --non-interactive \
-          --domains $backend_domain,$frontend_domain
-
+  # Verify Traefik is running
+  if ! docker ps | grep -q traefik; then
+    echo "Traefik container not running, starting it..."
+    docker start traefik 2>/dev/null || echo "Failed to start Traefik container"
+  fi
+  
+  # Check if domains are configured
+  echo "Domains configured for SSL: $backend_domain, $frontend_domain"
+  echo "Traefik will automatically generate SSL certificates via Let's Encrypt"
+  
+  # Verify configuration files exist
+  ls -la /opt/coolify/traefik/dynamic/ || echo "Dynamic configuration directory not found"
 EOF
 
   sleep 2

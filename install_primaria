@@ -43,8 +43,8 @@ system_pm2_install
 system_docker_install
 system_puppeteer_dependencies
 system_snapd_install
-system_nginx_install
-system_certbot_install
+system_traefik_install
+system_traefik_start
 
 # system config
 system_create_user
@@ -58,16 +58,16 @@ backend_node_build
 backend_db_migrate
 backend_db_seed
 backend_start_pm2
-backend_nginx_setup
+backend_traefik_setup
 
 # frontend related
 frontend_set_env
 frontend_node_dependencies
 frontend_node_build
 frontend_start_pm2
-frontend_nginx_setup
+frontend_traefik_setup
 
 # network related
-system_nginx_conf
-system_nginx_restart
-system_certbot_setup
+system_traefik_conf
+system_traefik_restart
+system_traefik_setup

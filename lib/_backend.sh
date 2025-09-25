@@ -234,13 +234,13 @@ EOF
 }
 
 #######################################
-# updates frontend code
+# setup traefik configuration for backend
 # Arguments:
 #   None
 #######################################
-backend_nginx_setup() {
+backend_traefik_setup() {
   print_banner
-  printf "${WHITE} 💻 Configurando nginx (backend)...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Configurando Traefik (backend)...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -248,23 +248,32 @@ backend_nginx_setup() {
   backend_hostname=$(echo "${backend_url/https:\/\/}")
 
 sudo su - root << EOF
-cat > /etc/nginx/sites-available/${instancia_add}-backend << 'END'
-server {
-  server_name $backend_hostname;
-  location / {
-    proxy_pass http://127.0.0.1:${backend_port};
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host \$host;
-    proxy_set_header X-Real-IP \$remote_addr;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_cache_bypass \$http_upgrade;
-  }
-}
+cat > /opt/coolify/traefik/dynamic/${instancia_add}-backend.yml << 'END'
+http:
+  routers:
+    ${instancia_add}-backend:
+      rule: "Host(\`$backend_hostname\`)"
+      service: ${instancia_add}-backend-service
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - default-headers
+        - secure-headers
+        - body-limit
+
+  services:
+    ${instancia_add}-backend-service:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:${backend_port}"
+        healthCheck:
+          path: "/health"
+          interval: "30s"
+          timeout: "5s"
 END
-ln -s /etc/nginx/sites-available/${instancia_add}-backend /etc/nginx/sites-enabled
+
+# Restart Traefik to reload configuration
+docker restart traefik
 EOF
 
   sleep 2

@@ -143,13 +143,13 @@ EOF
 }
 
 #######################################
-# sets up nginx for frontend
+# setup traefik configuration for frontend
 # Arguments:
 #   None
 #######################################
-frontend_nginx_setup() {
+frontend_traefik_setup() {
   print_banner
-  printf "${WHITE} 💻 Configurando nginx (frontend)...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Configurando Traefik (frontend)...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -158,25 +158,32 @@ frontend_nginx_setup() {
 
 sudo su - root << EOF
 
-cat > /etc/nginx/sites-available/${instancia_add}-frontend << 'END'
-server {
-  server_name $frontend_hostname;
+cat > /opt/coolify/traefik/dynamic/${instancia_add}-frontend.yml << 'END'
+http:
+  routers:
+    ${instancia_add}-frontend:
+      rule: "Host(\`$frontend_hostname\`)"
+      service: ${instancia_add}-frontend-service
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - default-headers
+        - secure-headers
+        - body-limit
 
-  location / {
-    proxy_pass http://127.0.0.1:${frontend_port};
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host \$host;
-    proxy_set_header X-Real-IP \$remote_addr;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_cache_bypass \$http_upgrade;
-  }
-}
+  services:
+    ${instancia_add}-frontend-service:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:${frontend_port}"
+        healthCheck:
+          path: "/"
+          interval: "30s"
+          timeout: "5s"
 END
 
-ln -s /etc/nginx/sites-available/${instancia_add}-frontend /etc/nginx/sites-enabled
+# Restart Traefik to reload configuration
+docker restart traefik
 EOF
 
   sleep 2
