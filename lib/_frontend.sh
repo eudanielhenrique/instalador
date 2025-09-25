@@ -167,19 +167,14 @@ http:
       tls:
         certResolver: letsencrypt
       middlewares:
-        - default-headers
-        - secure-headers
-        - body-limit
+        - security-headers
+        - cors-headers
 
   services:
     ${instancia_add}-frontend-service:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:${frontend_port}"
-        healthCheck:
-          path: "/"
-          interval: "30s"
-          timeout: "5s"
 END
 
 # Restart Traefik to reload configuration

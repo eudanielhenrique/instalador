@@ -447,22 +447,17 @@ system_traefik_install() {
   mkdir -p /opt/coolify/traefik/data
   
   # Create Traefik network
-  docker network create traefik-network 2>/dev/null || true
+  docker network create coolify 2>/dev/null || true
   
   # Create Traefik configuration
   cat > /opt/coolify/traefik/traefik.yml << 'END'
 api:
   dashboard: true
-  insecure: false
+  insecure: true
 
 entryPoints:
   web:
     address: ":80"
-    http:
-      redirections:
-        entrypoint:
-          to: websecure
-          scheme: https
   websecure:
     address: ":443"
 
@@ -478,6 +473,46 @@ certificatesResolvers:
       storage: /data/acme.json
       httpChallenge:
         entryPoint: web
+
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+END
+
+  # Create middlewares configuration
+  cat > /opt/coolify/traefik/dynamic/middlewares.yml << 'END'
+http:
+  middlewares:
+    security-headers:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+        customResponseHeaders:
+          X-Frame-Options: "DENY"
+          X-Content-Type-Options: "nosniff"
+          X-XSS-Protection: "1; mode=block"
+          Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+          Referrer-Policy: "strict-origin-when-cross-origin"
+    
+    cors-headers:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        accessControlAllowHeaders:
+          - "*"
+        accessControlAllowOriginList:
+          - "*"
+        accessControlMaxAge: 100
+        addVaryHeader: true
+    
+    body-limit:
+      buffering:
+        maxRequestBodyBytes: 50000000
+        maxResponseBodyBytes: 50000000
 END
 
   # Set proper permissions
@@ -504,7 +539,7 @@ system_traefik_start() {
   docker run -d \
     --name traefik \
     --restart unless-stopped \
-    --network traefik-network \
+    --network coolify \
     -p 80:80 \
     -p 443:443 \
     -p 8080:8080 \

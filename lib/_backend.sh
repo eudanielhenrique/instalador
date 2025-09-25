@@ -257,8 +257,8 @@ http:
       tls:
         certResolver: letsencrypt
       middlewares:
-        - default-headers
-        - secure-headers
+        - security-headers
+        - cors-headers
         - body-limit
 
   services:
@@ -266,10 +266,6 @@ http:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:${backend_port}"
-        healthCheck:
-          path: "/health"
-          interval: "30s"
-          timeout: "5s"
 END
 
 # Restart Traefik to reload configuration
